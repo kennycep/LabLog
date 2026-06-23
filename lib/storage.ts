@@ -33,9 +33,30 @@ function read<T>(key: string): T[] {
   }
 }
 
+export class StorageQuotaError extends Error {
+  constructor() {
+    super(
+      "Your browser's local storage is full — try removing some images or older logs."
+    );
+    this.name = "StorageQuotaError";
+  }
+}
+
 function write<T>(key: string, value: T[]): void {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY_PREFIX + key, JSON.stringify(value));
+  try {
+    window.localStorage.setItem(KEY_PREFIX + key, JSON.stringify(value));
+  } catch (e) {
+    // QuotaExceededError surfaces under various names across browsers.
+    if (
+      e instanceof DOMException &&
+      (e.name === "QuotaExceededError" ||
+        e.name === "NS_ERROR_DOM_QUOTA_REACHED")
+    ) {
+      throw new StorageQuotaError();
+    }
+    throw e;
+  }
   // Notify same-tab subscribers (the native `storage` event only fires
   // across tabs). Repositories listen for this to refresh.
   window.dispatchEvent(new CustomEvent("lablog:change", { detail: { key } }));

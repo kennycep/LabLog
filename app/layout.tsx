@@ -27,7 +27,9 @@ export default function RootLayout({
       <body className="min-h-screen">
         <ThemeProvider>
           <Navbar />
-          <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">{children}</main>
+          <main className="pb-safe mx-auto max-w-6xl px-4 py-6 pb-28 sm:py-8 md:pb-8">
+            {children}
+          </main>
         </ThemeProvider>
       </body>
     </html>

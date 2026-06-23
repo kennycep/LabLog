@@ -20,6 +20,8 @@ export interface DailyLog extends BaseRecord {
   labHours: number; // total hours physically in lab
   focus: string;
   tags: string[];
+  workedFor: string[]; // optional: lab members this work was for
+  images: string[]; // resized data URLs (screenshots, photos of work)
   did: string;
   progress: string;
   filesTouched: string;

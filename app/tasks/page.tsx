@@ -112,13 +112,13 @@ export default function TasksPage() {
           description="Break your work into tasks and move them across Backlog → This Week → Today → Done."
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {TASK_COLUMNS.map((col) => (
             <div
               key={col.value}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => onDrop(col.value)}
-              className="flex flex-col rounded-2xl border border-border bg-surface-2/50 p-2.5"
+              className="flex w-[80%] shrink-0 snap-start flex-col rounded-xl border border-border bg-surface-2/50 p-2.5 sm:w-[46%] lg:w-auto"
             >
               <div className="mb-2 flex items-center justify-between px-1">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">

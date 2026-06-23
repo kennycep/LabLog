@@ -47,17 +47,30 @@ export function formatRange(start: ISODate, end: ISODate): string {
   if (!start || !end) return "";
   const s = new Date(start + "T00:00:00");
   const e = new Date(end + "T00:00:00");
-  const sameMonth = s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+  const sameMonth =
+    s.getMonth() === e.getMonth() && s.getFullYear() === e.getFullYear();
+  const sameYear = s.getFullYear() === e.getFullYear();
+
+  // Build manually — passing non-contiguous skeletons (year+day, no month) to
+  // toLocaleDateString produces garbled output in some locales.
   const sFmt = s.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });
+  if (sameMonth) {
+    // "Jun 22–23, 2026"
+    return `${sFmt}–${e.getDate()}, ${e.getFullYear()}`;
+  }
   const eFmt = e.toLocaleDateString(undefined, {
-    month: sameMonth ? undefined : "short",
+    month: "short",
     day: "numeric",
     year: "numeric",
   });
-  return `${sFmt} – ${eFmt}`;
+  // "Dec 30, 2025 – Jan 3, 2026" or "Jun 22 – Jul 3, 2026"
+  const sWithYear = sameYear
+    ? sFmt
+    : `${sFmt}, ${s.getFullYear()}`;
+  return `${sWithYear} – ${eFmt}`;
 }
 
 export function inRange(date: ISODate, start: ISODate, end: ISODate): boolean {

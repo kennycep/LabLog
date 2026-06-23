@@ -9,6 +9,17 @@ import type {
   Urgency,
 } from "./types";
 
+// Lab members — used by the optional "Worked for" field on a daily log.
+export const LAB_MEMBERS = [
+  "Cameron",
+  "Mar",
+  "Cliona",
+  "Emily",
+  "Sarah",
+  "Alejandra",
+  "Nicole",
+] as const;
+
 export const WORK_TAGS = [
   "Manual coding",
   "Python analysis",

@@ -5,27 +5,27 @@
 :root {
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  /* Light theme — calm, soft */
-  --bg: 247 248 250;
+  /* Light — clean white with lab red */
+  --bg: 250 250 251;
   --surface: 255 255 255;
-  --surface-2: 244 246 249;
-  --border: 226 230 236;
-  --muted: 110 119 133;
-  --fg: 24 30 41;
-  --accent: 79 110 247;
-  --accent-soft: 232 237 254;
+  --surface-2: 247 248 250;
+  --border: 230 232 236;
+  --muted: 112 119 130;
+  --fg: 18 22 31;
+  --accent: 220 38 38; /* lab red */
+  --accent-soft: 254 242 242;
 }
 
 .dark {
-  /* Soft dark — not pure black */
-  --bg: 16 18 24;
-  --surface: 24 27 35;
-  --surface-2: 31 35 45;
-  --border: 42 47 60;
-  --muted: 142 150 165;
-  --fg: 230 234 242;
-  --accent: 124 148 255;
-  --accent-soft: 36 42 66;
+  /* Dark — near-black with the same red */
+  --bg: 12 12 14;
+  --surface: 19 19 22;
+  --surface-2: 26 26 30;
+  --border: 37 38 44;
+  --muted: 150 153 162;
+  --fg: 236 237 240;
+  --accent: 244 63 63; /* brighter red for dark */
+  --accent-soft: 39 22 24;
 }
 
 * {
@@ -43,48 +43,69 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Form controls share a clean, calm baseline */
+/* Inputs default to 16px on mobile so iOS doesn't zoom on focus. */
 .field {
-  @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg
-    placeholder:text-muted/70 outline-none transition
-    focus:border-accent focus:ring-2 focus:ring-accent/25;
+  @apply w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-base
+    text-fg placeholder:text-muted/60 outline-none transition
+    focus:border-accent/70 focus:ring-2 focus:ring-accent/15
+    sm:py-2 sm:text-sm;
 }
 
 textarea.field {
-  @apply min-h-[80px] resize-y leading-relaxed;
+  @apply min-h-[84px] resize-y leading-relaxed;
 }
 
 .label {
-  @apply mb-1.5 block text-xs font-medium text-muted;
+  @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted;
 }
 
 .btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm
-    font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm
+    font-medium transition disabled:cursor-not-allowed disabled:opacity-50
+    sm:py-2;
 }
 
 .btn-primary {
-  @apply btn bg-accent text-white hover:opacity-90 active:opacity-80;
+  @apply btn bg-accent text-white shadow-sm shadow-accent/20 hover:brightness-110 active:brightness-95;
 }
 
 .btn-ghost {
-  @apply btn border border-border bg-surface text-fg hover:bg-surface-2;
+  @apply btn border border-border bg-surface text-fg hover:border-accent/30 hover:text-accent;
 }
 
 .btn-subtle {
   @apply btn text-muted hover:bg-surface-2 hover:text-fg;
 }
 
+/* Sleeker surfaces — hairline borders, no heavy drop shadow. */
 .card {
-  @apply rounded-2xl border border-border bg-surface p-5 shadow-sm;
+  @apply rounded-xl border border-border bg-surface p-5;
 }
 
-/* Thin scrollbars for the kanban / long lists */
+.panel {
+  @apply rounded-xl border border-border bg-surface;
+}
+
+/* Thin scrollbars for kanban / long lists */
 .scroll-thin::-webkit-scrollbar {
-  height: 8px;
-  width: 8px;
+  height: 6px;
+  width: 6px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
   background: rgb(var(--border));
   border-radius: 999px;
+}
+
+/* Hide scrollbar but keep scroll (mobile kanban) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Respect the iOS safe area for the bottom nav. */
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px));
 }

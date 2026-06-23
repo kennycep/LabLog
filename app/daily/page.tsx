@@ -24,14 +24,22 @@ export default function DailyPage() {
 
   const todays = logs.find((l) => l.date === todayISO());
 
-  function handleCreate(data: DailyLogInput) {
-    create(data);
+  async function handleCreate(data: DailyLogInput) {
+    try {
+      await create(data);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not save the log.");
+    }
   }
 
-  function handleEditSave(data: DailyLogInput) {
-    if (editing) update(editing.id, data);
-    setEditing(null);
-    setModalOpen(false);
+  async function handleEditSave(data: DailyLogInput) {
+    try {
+      if (editing) await update(editing.id, data);
+      setEditing(null);
+      setModalOpen(false);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Could not save changes.");
+    }
   }
 
   function handleDelete(log: DailyLog) {

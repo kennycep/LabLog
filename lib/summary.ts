@@ -37,6 +37,7 @@ export interface SummaryData {
   completedTasks: Task[];
   openFileIssues: FileIssue[];
   topTags: string[];
+  collaborators: string[];
 }
 
 function lines(text: string): string[] {
@@ -95,6 +96,8 @@ export function buildSummaryData(input: SummaryInput): SummaryData {
     .sort((a, b) => b[1] - a[1])
     .map(([t]) => t);
 
+  const collaborators = dedupe(logs.flatMap((l) => l.workedFor ?? []));
+
   const activeGoals = input.goals.filter((g) => g.status === "in_progress");
   const completedTasks = input.tasks.filter(
     (t) => t.status === "done" && inRange(t.updatedAt.slice(0, 10), start, end)
@@ -116,6 +119,7 @@ export function buildSummaryData(input: SummaryInput): SummaryData {
     completedTasks,
     openFileIssues,
     topTags,
+    collaborators,
   };
 }
 
@@ -167,6 +171,10 @@ export function generateTalkingPoints(d: SummaryData): string {
   sections.push("");
   sections.push("Main focus this week");
   sections.push(bullets(d.focusPoints));
+  if (d.collaborators.length) {
+    sections.push("");
+    sections.push(`Worked with: ${joinNatural(d.collaborators)}`);
+  }
   sections.push("");
   sections.push("Progress made");
   sections.push(bullets(d.progressPoints));
@@ -211,7 +219,11 @@ export function generateEmail(d: SummaryData): string {
   body.push(
     `Here's my update for ${d.range.label}. This week I focused on ${focus}, logging ${fmtHours(
       d.totalHours
-    )} hours of focused work (${fmtHours(d.totalLabHours)} hours in the lab).`
+    )} hours of focused work (${fmtHours(d.totalLabHours)} hours in the lab).${
+      d.collaborators.length
+        ? ` Some of this was alongside ${joinNatural(d.collaborators)}.`
+        : ""
+    }`
   );
   body.push("");
 

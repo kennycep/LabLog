@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Field, Select, TextArea, TextInput } from "./Field";
 import { TagSelector } from "./TagSelector";
-import { CONFIDENCE_OPTIONS, WORK_TAGS } from "@/lib/constants";
+import { ImageUploader } from "./ImageUploader";
+import { CONFIDENCE_OPTIONS, LAB_MEMBERS, WORK_TAGS } from "@/lib/constants";
 import { todayISO } from "@/lib/format";
 import type { ConfidenceLevel, DailyLog } from "@/lib/types";
 
@@ -15,6 +16,8 @@ const EMPTY: DailyLogInput = {
   labHours: 0,
   focus: "",
   tags: [],
+  workedFor: [],
+  images: [],
   did: "",
   progress: "",
   filesTouched: "",
@@ -42,6 +45,17 @@ export function DailyLogForm({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  function addMember(name: string) {
+    if (!name || form.workedFor.includes(name)) return;
+    set("workedFor", [...form.workedFor, name]);
+  }
+  function removeMember(name: string) {
+    set(
+      "workedFor",
+      form.workedFor.filter((m) => m !== name)
+    );
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     onSubmit({
@@ -52,10 +66,14 @@ export function DailyLogForm({
     });
   }
 
+  const availableMembers = LAB_MEMBERS.filter(
+    (m) => !form.workedFor.includes(m)
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      {/* Top row — the essentials, fast to fill */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* Essentials — fast to fill */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         <Field label="Date">
           <TextInput
             type="date"
@@ -64,9 +82,10 @@ export function DailyLogForm({
             required
           />
         </Field>
-        <Field label="Hours on task" hint="Focused work">
+        <Field label="Hrs on task">
           <TextInput
             type="number"
+            inputMode="decimal"
             min={0}
             step={0.5}
             value={form.hours || ""}
@@ -74,9 +93,10 @@ export function DailyLogForm({
             placeholder="0"
           />
         </Field>
-        <Field label="Hours in lab" hint="Total present">
+        <Field label="Hrs in lab">
           <TextInput
             type="number"
+            inputMode="decimal"
             min={0}
             step={0.5}
             value={form.labHours || ""}
@@ -93,7 +113,7 @@ export function DailyLogForm({
         </Field>
       </div>
 
-      <Field label="Main focus" hint="One line — what today was really about">
+      <Field label="Main focus">
         <TextInput
           value={form.focus}
           onChange={(e) => set("focus", e.target.value)}
@@ -108,6 +128,40 @@ export function DailyLogForm({
           selected={form.tags}
           onChange={(tags) => set("tags", tags)}
         />
+      </Field>
+
+      {/* Worked for — optional */}
+      <Field label="Worked for (optional)" hint="If today's work was for a specific lab member">
+        <div className="space-y-2">
+          {form.workedFor.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {form.workedFor.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => removeMember(m)}
+                  className="group inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-xs font-medium text-white"
+                >
+                  {m}
+                  <span className="opacity-70 group-hover:opacity-100">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {availableMembers.length > 0 && (
+            <Select
+              value=""
+              onChange={(e) => {
+                addMember(e.target.value);
+                e.target.value = "";
+              }}
+              options={[
+                { value: "", label: "+ Add a lab member…" },
+                ...availableMembers.map((m) => ({ value: m, label: m })),
+              ]}
+            />
+          )}
+        </div>
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -135,6 +189,12 @@ export function DailyLogForm({
           placeholder="e.g. CounterCuing-01/P014_gaze.csv, analysis/flash_count.py"
         />
       </Field>
+
+      <ImageUploader
+        value={form.images}
+        onChange={(images) => set("images", images)}
+        label="Images / screenshots (optional)"
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Errors / blockers">
@@ -171,7 +231,7 @@ export function DailyLogForm({
       </div>
 
       <div className="flex items-center gap-2 pt-1">
-        <button type="submit" className="btn-primary">
+        <button type="submit" className="btn-primary flex-1 sm:flex-none">
           {submitLabel}
         </button>
         {onCancel && (
