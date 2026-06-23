@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Light theme — calm, soft */
+  --bg: 247 248 250;
+  --surface: 255 255 255;
+  --surface-2: 244 246 249;
+  --border: 226 230 236;
+  --muted: 110 119 133;
+  --fg: 24 30 41;
+  --accent: 79 110 247;
+  --accent-soft: 232 237 254;
+}
+
+.dark {
+  /* Soft dark — not pure black */
+  --bg: 16 18 24;
+  --surface: 24 27 35;
+  --surface-2: 31 35 45;
+  --border: 42 47 60;
+  --muted: 142 150 165;
+  --fg: 230 234 242;
+  --accent: 124 148 255;
+  --accent-soft: 36 42 66;
+}
+
+* {
+  border-color: rgb(var(--border));
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Form controls share a clean, calm baseline */
+.field {
+  @apply w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-fg
+    placeholder:text-muted/70 outline-none transition
+    focus:border-accent focus:ring-2 focus:ring-accent/25;
+}
+
+textarea.field {
+  @apply min-h-[80px] resize-y leading-relaxed;
+}
+
+.label {
+  @apply mb-1.5 block text-xs font-medium text-muted;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm
+    font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+}
+
+.btn-primary {
+  @apply btn bg-accent text-white hover:opacity-90 active:opacity-80;
+}
+
+.btn-ghost {
+  @apply btn border border-border bg-surface text-fg hover:bg-surface-2;
+}
+
+.btn-subtle {
+  @apply btn text-muted hover:bg-surface-2 hover:text-fg;
+}
+
+.card {
+  @apply rounded-2xl border border-border bg-surface p-5 shadow-sm;
+}
+
+/* Thin scrollbars for the kanban / long lists */
+.scroll-thin::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 999px;
+}
