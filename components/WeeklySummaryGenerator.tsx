@@ -25,22 +25,51 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "next", label: "Next week" },
 ];
 
+export interface SavedReportInput {
+  startDate: string;
+  endDate: string;
+  slackUpdate: string;
+  meetingNotes: string;
+  emailUpdate: string;
+}
+
 export function WeeklySummaryGenerator({
   logs,
   tasks,
   blockers,
   goals,
   fileIssues,
+  onSaveReport,
 }: {
   logs: DailyLog[];
   tasks: Task[];
   blockers: Blocker[];
   goals: Goal[];
   fileIssues: FileIssue[];
+  onSaveReport?: (r: SavedReportInput) => Promise<void>;
 }) {
   const [start, setStart] = useState(startOfWeekISO());
   const [end, setEnd] = useState(todayISO());
   const [tab, setTab] = useState<Tab>("agenda");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+
+  async function saveReport() {
+    if (!onSaveReport) return;
+    setSaveState("saving");
+    try {
+      await onSaveReport({
+        startDate: start,
+        endDate: end,
+        slackUpdate: outputs.slack,
+        meetingNotes: outputs.agenda,
+        emailUpdate: outputs.email,
+      });
+      setSaveState("saved");
+      setTimeout(() => setSaveState("idle"), 2000);
+    } catch {
+      setSaveState("idle");
+    }
+  }
 
   const input: SummaryInput = useMemo(
     () => ({ start, end, logs, tasks, blockers, goals, fileIssues }),
@@ -100,7 +129,7 @@ export function WeeklySummaryGenerator({
             </button>
           </div>
           {hasData && (
-            <div className="ml-auto flex gap-2">
+            <div className="ml-auto flex flex-wrap gap-2">
               <CopyButton
                 text={outputs.slack}
                 label="Copy Slack update"
@@ -111,6 +140,19 @@ export function WeeklySummaryGenerator({
                 label="Copy meeting agenda"
                 className="h-9"
               />
+              {onSaveReport && (
+                <button
+                  onClick={saveReport}
+                  disabled={saveState === "saving"}
+                  className="btn-primary h-9"
+                >
+                  {saveState === "saved"
+                    ? "Saved ✓"
+                    : saveState === "saving"
+                    ? "Saving…"
+                    : "Save as report"}
+                </button>
+              )}
             </div>
           )}
         </div>

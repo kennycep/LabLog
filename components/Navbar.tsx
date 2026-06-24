@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { useTheme } from "./ThemeProvider";
+import { useAuth } from "./AuthProvider";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
@@ -92,6 +93,7 @@ export function Navbar() {
                 <span className="h-[17px] w-[17px]" />
               )}
             </button>
+            <ProfileMenu />
             <button
               onClick={() => setOpen((o) => !o)}
               className="btn-subtle h-9 w-9 !px-0 md:hidden"
@@ -106,7 +108,7 @@ export function Navbar() {
         {open && (
           <nav className="border-t border-border bg-surface px-2 py-2 md:hidden">
             <div className="grid grid-cols-2 gap-1">
-              {LINKS.map((l) => (
+              {[...LINKS, { href: "/account", label: "Account" }].map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
@@ -152,6 +154,62 @@ export function Navbar() {
         </div>
       </nav>
     </>
+  );
+}
+
+function ProfileMenu() {
+  const { user, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+
+  if (!user) return null;
+  const email = user.email ?? "Account";
+  const initial = email.charAt(0).toUpperCase();
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2 text-sm font-semibold text-fg ring-1 ring-border transition hover:ring-accent/40"
+        aria-label="Account menu"
+        title={email}
+      >
+        {initial}
+      </button>
+      {open && (
+        <div className="absolute right-0 top-11 z-40 w-56 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+          <div className="border-b border-border px-3.5 py-3">
+            <p className="text-xs text-muted">Signed in as</p>
+            <p className="truncate text-sm font-medium">{email}</p>
+          </div>
+          <Link
+            href="/account"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 px-3.5 py-2.5 text-sm hover:bg-surface-2"
+          >
+            Account &amp; data
+          </Link>
+          <button
+            onClick={() => {
+              setOpen(false);
+              signOut();
+            }}
+            className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm text-rose-500 hover:bg-surface-2"
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

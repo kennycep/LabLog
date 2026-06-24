@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { Navbar } from "@/components/Navbar";
+import { AuthProvider } from "@/components/AuthProvider";
+import { AppGate } from "@/components/AppGate";
 
 export const metadata: Metadata = {
   title: "LabLog — Research Command Center",
@@ -26,10 +27,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen">
         <ThemeProvider>
-          <Navbar />
-          <main className="pb-safe mx-auto max-w-6xl px-4 py-6 pb-28 sm:py-8 md:pb-8">
-            {children}
-          </main>
+          <AuthProvider>
+            <AppGate>{children}</AppGate>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

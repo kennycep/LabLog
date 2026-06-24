@@ -108,6 +108,14 @@ export type FileIssueType =
   | "needs_review"
   | "resolved";
 
+export interface WeeklyReport extends BaseRecord {
+  startDate: ISODate;
+  endDate: ISODate;
+  slackUpdate: string;
+  meetingNotes: string;
+  emailUpdate: string;
+}
+
 export type FileStatus = "open" | "in_progress" | "resolved";
 
 export interface FileIssue extends BaseRecord {
