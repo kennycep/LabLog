@@ -6,6 +6,7 @@ import { FileIssueCard } from "@/components/FileIssueCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Modal } from "@/components/Modal";
 import { Field, Select, TextArea, TextInput } from "@/components/Field";
+import { Skeleton } from "@/components/Skeleton";
 import { FILE_ISSUE_TYPES, FILE_STATUS_OPTIONS } from "@/lib/constants";
 import { fileIssueRepo } from "@/lib/repositories";
 import { useCollection } from "@/lib/useCollection";
@@ -96,7 +97,10 @@ export default function FilesPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-28 w-full rounded-xl" />
+          <Skeleton className="h-28 w-full rounded-xl" />
+        </div>
       ) : items.length === 0 ? (
         <EmptyState
           title="No file issues tracked"

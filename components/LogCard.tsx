@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CONFIDENCE_OPTIONS, labelFor } from "@/lib/constants";
 import { fmtHours, formatDate } from "@/lib/format";
+import { dailyLabHours, sessionRangeLabel } from "@/lib/time";
 import type { ConfidenceLevel, DailyLog } from "@/lib/types";
 
 const CONFIDENCE_DOT: Record<ConfidenceLevel, string> = {
@@ -49,7 +50,8 @@ export function LogCard({
         />
         <h3 className="text-sm font-semibold">{formatDate(log.date)}</h3>
         <span className="text-xs text-muted">
-          {fmtHours(log.hours)}h · {fmtHours(log.labHours)}h lab
+          {fmtHours(dailyLabHours(log))}h lab
+          {log.hoursOnTask > 0 && ` · ${fmtHours(log.hoursOnTask)}h focused`}
         </span>
         {(onEdit || onDelete) && (
           <div className="ml-auto flex gap-0.5">
@@ -99,6 +101,24 @@ export function LogCard({
               <span className="text-fg/80">For</span> {log.workedFor.join(", ")}
             </span>
           )}
+        </div>
+      )}
+
+      {/* Session ranges */}
+      {!compact && log.sessions.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {log.sessions.map((s) => {
+            const range = sessionRangeLabel(s);
+            if (!range) return null;
+            return (
+              <span
+                key={s.id}
+                className="rounded-md border border-border px-2 py-0.5 text-[11px] text-muted"
+              >
+                {range}
+              </span>
+            );
+          })}
         </div>
       )}
 

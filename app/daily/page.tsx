@@ -5,10 +5,15 @@ import { PageHeader } from "@/components/PageHeader";
 import { DailyLogForm, type DailyLogInput } from "@/components/DailyLogForm";
 import { LogCard } from "@/components/LogCard";
 import { EmptyState } from "@/components/EmptyState";
+import { SkeletonList } from "@/components/Skeleton";
 import { Modal } from "@/components/Modal";
 import { dailyLogRepo } from "@/lib/repositories";
 import { useCollection } from "@/lib/useCollection";
-import { fmtHours, todayISO } from "@/lib/format";
+import { fmtHours, formatLongDate, todayISO } from "@/lib/format";
+import {
+  calculateWeeklyFocusedHours,
+  calculateWeeklyLabHours,
+} from "@/lib/time";
 import type { DailyLog } from "@/lib/types";
 
 export default function DailyPage() {
@@ -16,7 +21,6 @@ export default function DailyPage() {
   const [editing, setEditing] = useState<DailyLog | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
-  // Logs are sorted by createdAt in the repo; re-sort by date for display.
   const logs = useMemo(
     () => [...items].sort((a, b) => b.date.localeCompare(a.date)),
     [items]
@@ -43,41 +47,43 @@ export default function DailyPage() {
   }
 
   function handleDelete(log: DailyLog) {
-    if (confirm(`Delete the log for ${log.date}?`)) remove(log.id);
+    if (confirm(`Delete the entry for ${log.date}?`)) remove(log.id);
   }
+
+  const totalLab = fmtHours(calculateWeeklyLabHours(logs));
+  const totalFocused = fmtHours(calculateWeeklyFocusedHours(logs));
 
   return (
     <div>
       <PageHeader
         title="Daily Log"
-        subtitle={
-          todays
-            ? "You've logged today — add more or review past days below."
-            : "Capture today's work. It only takes a minute."
-        }
+        subtitle={`${formatLongDate(todayISO())} · your lab notebook`}
       />
 
-      {/* Quick-add form, always visible for speed */}
-      <div className="card mb-8">
-        <h2 className="mb-4 text-sm font-semibold">
-          {todays ? "Add another entry" : "Log today"}
+      {/* Notebook entry — always visible for speed */}
+      <div className="panel mb-8 p-5 sm:p-6">
+        <h2 className="mb-5 text-sm font-semibold text-muted">
+          {todays ? "New entry for today" : "Log today's work session"}
         </h2>
-        <DailyLogForm onSubmit={handleCreate} />
+        <DailyLogForm onSubmit={handleCreate} submitLabel="Save entry" />
       </div>
 
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-muted">
-          {logs.length} {logs.length === 1 ? "entry" : "entries"} ·{" "}
-          {fmtHours(logs.reduce((s, l) => s + l.hours, 0))}h on task
-        </h2>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-sm font-semibold">This week's lab record</h2>
+        {logs.length > 0 && (
+          <span className="text-xs text-muted">
+            {logs.length} {logs.length === 1 ? "entry" : "entries"} ·{" "}
+            {totalLab}h in lab · {totalFocused}h focused
+          </span>
+        )}
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <SkeletonList rows={3} />
       ) : logs.length === 0 ? (
         <EmptyState
-          title="No logs yet"
-          description="Your daily entries will appear here. Start by logging today's work above."
+          title="No entries yet"
+          description="Your daily lab notebook starts here — log today's session above and it'll appear in this record."
         />
       ) : (
         <div className="space-y-4">
@@ -101,7 +107,7 @@ export default function DailyPage() {
           setModalOpen(false);
           setEditing(null);
         }}
-        title="Edit daily log"
+        title="Edit notebook entry"
         wide
       >
         {editing && (

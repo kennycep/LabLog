@@ -1,8 +1,14 @@
 // Pure functions that turn logged data into shareable updates.
 // No AI, no filler — every line is derived from what the user actually entered.
 
-import { fmtHours, formatRange, inRange } from "./format";
+import { fmtHours, formatDate, formatRange, inRange } from "./format";
 import { labelFor, FILE_ISSUE_TYPES } from "./constants";
+import {
+  calculateWeeklyFocusedHours,
+  calculateWeeklyLabHours,
+  dailyLabHours,
+  sessionRangeLabel,
+} from "./time";
 import type {
   Blocker,
   DailyLog,
@@ -22,16 +28,27 @@ export interface SummaryInput {
   fileIssues: FileIssue[];
 }
 
+export interface DayBreakdown {
+  date: ISODate;
+  label: string;
+  labHours: number;
+  focusedHours: number;
+  ranges: string[];
+}
+
 export interface SummaryData {
   range: { start: ISODate; end: ISODate; label: string };
   logs: DailyLog[];
-  totalHours: number;
   totalLabHours: number;
+  totalFocusedHours: number;
+  daysLogged: number;
+  dayBreakdown: DayBreakdown[];
   focusPoints: string[];
-  progressPoints: string[];
+  accomplishments: string[];
   filesChecked: string[];
   blockerPoints: string[];
   questionPoints: string[];
+  decisionsNeeded: string[];
   nextStepPoints: string[];
   activeGoals: Goal[];
   completedTasks: Task[];
@@ -67,28 +84,48 @@ export function buildSummaryData(input: SummaryInput): SummaryData {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const focusPoints = dedupe(logs.map((l) => l.focus.trim()).filter(Boolean));
-  const progressPoints = dedupe(logs.flatMap((l) => lines(l.progress)));
+  const accomplishments = dedupe([
+    ...logs.flatMap((l) => lines(l.progress)),
+    ...logs.flatMap((l) => lines(l.did)),
+  ]);
   const filesChecked = dedupe(logs.flatMap((l) => lines(l.filesTouched)));
   const nextStepPoints = dedupe(logs.flatMap((l) => lines(l.nextSteps)));
 
-  // Blockers: from logs + open blocker records in range
   const logBlockers = logs.flatMap((l) => lines(l.blockers));
   const recordBlockers = input.blockers
     .filter((b) => b.status !== "resolved")
     .map((b) => b.title);
   const blockerPoints = dedupe([...logBlockers, ...recordBlockers]);
 
-  // Questions: from logs + open blocker "needFromCameron"
   const logQuestions = logs.flatMap((l) => lines(l.questions));
   const recordQuestions = input.blockers
     .filter((b) => b.status !== "resolved" && b.needFromCameron.trim())
     .map((b) => b.needFromCameron.trim());
   const questionPoints = dedupe([...logQuestions, ...recordQuestions]);
 
-  const totalHours = logs.reduce((s, l) => s + (l.hours || 0), 0);
-  const totalLabHours = logs.reduce((s, l) => s + (l.labHours || 0), 0);
+  // Decisions needed = what you explicitly need from Cameron.
+  const decisionsNeeded = dedupe([
+    ...recordQuestions,
+    ...input.tasks
+      .filter((t) => t.questionForCameron.trim())
+      .map((t) => t.questionForCameron.trim()),
+    ...logQuestions,
+  ]);
 
-  // Tag frequency
+  const totalLabHours = calculateWeeklyLabHours(logs);
+  const totalFocusedHours = calculateWeeklyFocusedHours(logs);
+  const daysLogged = new Set(logs.map((l) => l.date)).size;
+
+  const dayBreakdown: DayBreakdown[] = logs.map((l) => ({
+    date: l.date,
+    label: formatDate(l.date),
+    labHours: dailyLabHours(l),
+    focusedHours: l.hoursOnTask || 0,
+    ranges: l.sessions
+      .map((s) => sessionRangeLabel(s))
+      .filter((r): r is string => !!r),
+  }));
+
   const tagCounts = new Map<string, number>();
   for (const l of logs)
     for (const t of l.tags) tagCounts.set(t, (tagCounts.get(t) ?? 0) + 1);
@@ -107,13 +144,16 @@ export function buildSummaryData(input: SummaryInput): SummaryData {
   return {
     range: { start, end, label: formatRange(start, end) },
     logs,
-    totalHours,
     totalLabHours,
+    totalFocusedHours,
+    daysLogged,
+    dayBreakdown,
     focusPoints,
-    progressPoints,
+    accomplishments,
     filesChecked,
     blockerPoints,
     questionPoints,
+    decisionsNeeded,
     nextStepPoints,
     activeGoals,
     completedTasks,
@@ -136,14 +176,32 @@ function bullets(items: string[], fallback = "—"): string {
   return items.map((i) => `• ${i}`).join("\n");
 }
 
+function timeSummaryLines(d: SummaryData): string[] {
+  const out: string[] = [];
+  out.push(
+    `${fmtHours(d.totalLabHours)} h in lab · ${fmtHours(
+      d.totalFocusedHours
+    )} h focused · ${d.daysLogged} day${d.daysLogged === 1 ? "" : "s"} logged`
+  );
+  for (const day of d.dayBreakdown) {
+    const range = day.ranges.length ? ` (${day.ranges.join(", ")})` : "";
+    out.push(
+      `• ${day.label}: ${fmtHours(day.labHours)} h lab${
+        day.focusedHours ? `, ${fmtHours(day.focusedHours)} h focused` : ""
+      }${range}`
+    );
+  }
+  return out;
+}
+
 // ---- Generators ---------------------------------------------------------
 
 export function generateSlack(d: SummaryData): string {
   const focus = d.focusPoints.length
     ? joinNatural(d.focusPoints.slice(0, 3))
     : "lab work";
-  const progress = d.progressPoints.length
-    ? joinNatural(d.progressPoints.slice(0, 3))
+  const progress = d.accomplishments.length
+    ? joinNatural(d.accomplishments.slice(0, 3))
     : "moving things forward";
   const blocker = d.blockerPoints.length
     ? d.blockerPoints[0]
@@ -155,57 +213,66 @@ export function generateSlack(d: SummaryData): string {
     : "keep going on current tasks";
 
   return [
-    `Quick update — this week I focused on ${focus}.`,
-    `I made progress on ${progress}.`,
-    `Main blocker/question is ${blocker}.`,
+    `Quick update — this week I focused on ${focus} (${fmtHours(
+      d.totalLabHours
+    )} h in lab, ${fmtHours(d.totalFocusedHours)} h focused).`,
+    `Made progress on ${progress}.`,
+    `Main blocker/question: ${blocker}.`,
     `Next I'm planning to ${next}.`,
   ].join(" ");
 }
 
-export function generateTalkingPoints(d: SummaryData): string {
-  const sections: string[] = [];
-  sections.push(`Weekly check-in · ${d.range.label}`);
-  sections.push(
-    `Hours: ${fmtHours(d.totalHours)}h on task · ${fmtHours(d.totalLabHours)}h in lab`
-  );
-  sections.push("");
-  sections.push("Main focus this week");
-  sections.push(bullets(d.focusPoints));
+// The full meeting-prep document.
+export function generateMeetingAgenda(d: SummaryData): string {
+  const s: string[] = [];
+  s.push(`LAB MEETING AGENDA · ${d.range.label}`);
+  s.push("");
+  s.push("1. Main accomplishments");
+  s.push(bullets(d.accomplishments.length ? d.accomplishments : d.focusPoints));
+  s.push("");
+  s.push("2. Time summary");
+  s.push(timeSummaryLines(d).join("\n"));
   if (d.collaborators.length) {
-    sections.push("");
-    sections.push(`Worked with: ${joinNatural(d.collaborators)}`);
+    s.push(`Worked with: ${joinNatural(d.collaborators)}`);
   }
-  sections.push("");
-  sections.push("Progress made");
-  sections.push(bullets(d.progressPoints));
-  sections.push("");
-  sections.push("Files / data checked");
-  sections.push(bullets(d.filesChecked));
+  s.push("");
+  s.push("3. Files / data touched");
+  s.push(bullets(d.filesChecked, "• None recorded"));
   if (d.openFileIssues.length) {
-    sections.push(
+    s.push(
       bullets(
         d.openFileIssues
-          .slice(0, 6)
+          .slice(0, 8)
           .map(
             (f) =>
-              `${f.fileName || f.participantId || f.project}: ${labelFor(
-                FILE_ISSUE_TYPES,
-                f.issueType
-              )}`
+              `${[f.project, f.participantId, f.fileName]
+                .filter(Boolean)
+                .join(" / ")} — ${labelFor(FILE_ISSUE_TYPES, f.issueType)}`
           )
       )
     );
   }
-  sections.push("");
-  sections.push("Blockers / errors");
-  sections.push(bullets(d.blockerPoints, "• None this week"));
-  sections.push("");
-  sections.push("Questions for Cameron");
-  sections.push(bullets(d.questionPoints, "• None right now"));
-  sections.push("");
-  sections.push("Next steps");
-  sections.push(bullets(d.nextStepPoints));
-  return sections.join("\n");
+  s.push("");
+  s.push("4. Current blockers / errors");
+  s.push(bullets(d.blockerPoints, "• None this week"));
+  s.push("");
+  s.push("5. Decisions needed from Cameron");
+  s.push(bullets(d.decisionsNeeded, "• None right now"));
+  s.push("");
+  s.push("6. Next week plan");
+  s.push(bullets(d.nextStepPoints, "• To be set"));
+  if (d.activeGoals.length) {
+    s.push("");
+    s.push("Goals in progress:");
+    s.push(
+      bullets(
+        d.activeGoals.map((g) =>
+          g.nextMilestone ? `${g.title} → ${g.nextMilestone}` : g.title
+        )
+      )
+    );
+  }
+  return s.join("\n");
 }
 
 export function generateEmail(d: SummaryData): string {
@@ -217,9 +284,11 @@ export function generateEmail(d: SummaryData): string {
   body.push("Hi Cameron,");
   body.push("");
   body.push(
-    `Here's my update for ${d.range.label}. This week I focused on ${focus}, logging ${fmtHours(
-      d.totalHours
-    )} hours of focused work (${fmtHours(d.totalLabHours)} hours in the lab).${
+    `Here's my update for ${d.range.label}. This week I focused on ${focus}, with ${fmtHours(
+      d.totalLabHours
+    )} hours in the lab (${fmtHours(d.totalFocusedHours)} hours of focused work) across ${
+      d.daysLogged
+    } day${d.daysLogged === 1 ? "" : "s"}.${
       d.collaborators.length
         ? ` Some of this was alongside ${joinNatural(d.collaborators)}.`
         : ""
@@ -227,9 +296,9 @@ export function generateEmail(d: SummaryData): string {
   );
   body.push("");
 
-  if (d.progressPoints.length) {
-    body.push("Progress:");
-    body.push(bullets(d.progressPoints));
+  if (d.accomplishments.length) {
+    body.push("Main accomplishments:");
+    body.push(bullets(d.accomplishments));
     body.push("");
   }
   if (d.blockerPoints.length) {
@@ -237,9 +306,9 @@ export function generateEmail(d: SummaryData): string {
     body.push(bullets(d.blockerPoints));
     body.push("");
   }
-  if (d.questionPoints.length) {
-    body.push("A few questions I'd value your input on:");
-    body.push(bullets(d.questionPoints));
+  if (d.decisionsNeeded.length) {
+    body.push("Where I'd value your input:");
+    body.push(bullets(d.decisionsNeeded));
     body.push("");
   }
   if (d.nextStepPoints.length) {
@@ -253,13 +322,13 @@ export function generateEmail(d: SummaryData): string {
 
 export function generateBlockerList(d: SummaryData): string {
   const out: string[] = [];
-  out.push(`Blockers & questions · ${d.range.label}`);
+  out.push(`Blockers & open questions · ${d.range.label}`);
   out.push("");
   out.push("Blockers / errors:");
   out.push(bullets(d.blockerPoints, "• None"));
   out.push("");
-  out.push("Questions for Cameron:");
-  out.push(bullets(d.questionPoints, "• None"));
+  out.push("Decisions needed from Cameron:");
+  out.push(bullets(d.decisionsNeeded, "• None"));
   if (d.openFileIssues.length) {
     out.push("");
     out.push("Open file / data issues:");
@@ -279,9 +348,9 @@ export function generateBlockerList(d: SummaryData): string {
 
 export function generateNextWeekPlan(d: SummaryData): string {
   const out: string[] = [];
-  out.push(`Next week plan`);
+  out.push("Next week plan");
   out.push("");
-  out.push("Planned next steps (from daily logs):");
+  out.push("Planned next steps (from your notebook):");
   out.push(bullets(d.nextStepPoints, "• Nothing logged yet"));
   if (d.activeGoals.length) {
     out.push("");
@@ -289,9 +358,7 @@ export function generateNextWeekPlan(d: SummaryData): string {
     out.push(
       bullets(
         d.activeGoals.map((g) =>
-          g.nextMilestone
-            ? `${g.title} → ${g.nextMilestone}`
-            : g.title
+          g.nextMilestone ? `${g.title} → ${g.nextMilestone}` : g.title
         )
       )
     );

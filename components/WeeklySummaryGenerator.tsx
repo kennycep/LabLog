@@ -2,27 +2,26 @@
 
 import { useMemo, useState } from "react";
 import { CopyButton } from "./CopyButton";
-import { StatCard } from "./DashboardCard";
 import { TextInput } from "./Field";
 import { fmtHours, isoDaysAgo, startOfWeekISO, todayISO } from "@/lib/format";
 import {
   buildSummaryData,
   generateBlockerList,
   generateEmail,
+  generateMeetingAgenda,
   generateNextWeekPlan,
   generateSlack,
-  generateTalkingPoints,
   type SummaryInput,
 } from "@/lib/summary";
 import type { Blocker, DailyLog, FileIssue, Goal, Task } from "@/lib/types";
 
-type Tab = "slack" | "talking" | "email" | "blockers" | "next";
+type Tab = "agenda" | "slack" | "email" | "blockers" | "next";
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: "talking", label: "Talking points" },
+  { value: "agenda", label: "Meeting agenda" },
   { value: "slack", label: "Slack update" },
   { value: "email", label: "Email" },
-  { value: "blockers", label: "Blockers / Qs" },
+  { value: "blockers", label: "Blockers & decisions" },
   { value: "next", label: "Next week" },
 ];
 
@@ -41,19 +40,18 @@ export function WeeklySummaryGenerator({
 }) {
   const [start, setStart] = useState(startOfWeekISO());
   const [end, setEnd] = useState(todayISO());
-  const [tab, setTab] = useState<Tab>("talking");
+  const [tab, setTab] = useState<Tab>("agenda");
 
   const input: SummaryInput = useMemo(
     () => ({ start, end, logs, tasks, blockers, goals, fileIssues }),
     [start, end, logs, tasks, blockers, goals, fileIssues]
   );
-
   const data = useMemo(() => buildSummaryData(input), [input]);
 
   const outputs: Record<Tab, string> = useMemo(
     () => ({
+      agenda: generateMeetingAgenda(data),
       slack: generateSlack(data),
-      talking: generateTalkingPoints(data),
       email: generateEmail(data),
       blockers: generateBlockerList(data),
       next: generateNextWeekPlan(data),
@@ -70,8 +68,8 @@ export function WeeklySummaryGenerator({
 
   return (
     <div className="space-y-6">
-      {/* Range controls */}
-      <div className="card">
+      {/* Range + primary copy actions */}
+      <div className="panel p-5">
         <div className="flex flex-wrap items-end gap-4">
           <div>
             <label className="label">From</label>
@@ -100,46 +98,45 @@ export function WeeklySummaryGenerator({
             <button onClick={() => quickRange(14)} className="btn-ghost h-9">
               Last 14d
             </button>
-            <button
-              onClick={() => {
-                setStart(startOfWeekISO());
-                setEnd(todayISO());
-              }}
-              className="btn-ghost h-9"
-            >
-              Reset
-            </button>
           </div>
+          {hasData && (
+            <div className="ml-auto flex gap-2">
+              <CopyButton
+                text={outputs.slack}
+                label="Copy Slack update"
+                className="h-9"
+              />
+              <CopyButton
+                text={outputs.agenda}
+                label="Copy meeting agenda"
+                className="h-9"
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Snapshot */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard
-          label="On-task hours"
-          value={`${fmtHours(data.totalHours)}h`}
-          sub={`${data.logs.length} day${data.logs.length === 1 ? "" : "s"} logged`}
-          accent
-        />
-        <StatCard label="Lab hours" value={`${fmtHours(data.totalLabHours)}h`} />
-        <StatCard
-          label="Blockers / Qs"
+      {/* Time + signal strip */}
+      <div className="panel grid grid-cols-2 divide-border p-5 sm:grid-cols-4 sm:divide-x">
+        <Metric label="In lab" value={`${fmtHours(data.totalLabHours)} h`} accent />
+        <Metric label="Focused work" value={`${fmtHours(data.totalFocusedHours)} h`} />
+        <Metric
+          label="Blockers / questions"
           value={String(data.blockerPoints.length + data.questionPoints.length)}
         />
-        <StatCard label="Open file issues" value={String(data.openFileIssues.length)} />
+        <Metric label="Open file issues" value={String(data.openFileIssues.length)} />
       </div>
 
       {!hasData ? (
-        <div className="rounded-2xl border border-dashed border-border bg-surface/50 px-6 py-10 text-center">
-          <p className="text-sm font-medium text-fg">No logs in this range</p>
+        <div className="rounded-xl border border-dashed border-border bg-surface/50 px-6 py-10 text-center">
+          <p className="text-sm font-medium text-fg">No entries in this range</p>
           <p className="mt-1 text-sm text-muted">
-            Pick a range that includes some daily logs, or add logs first. The
-            summary is built entirely from what you&apos;ve recorded.
+            Pick a range that includes some notebook entries, or log a session
+            first. The agenda is built entirely from what you&apos;ve recorded.
           </p>
         </div>
       ) : (
-        <div className="card">
-          {/* Tabs */}
+        <div className="panel p-5 sm:p-6">
           <div className="mb-4 flex flex-wrap gap-1 border-b border-border pb-3">
             {TABS.map((t) => (
               <button
@@ -158,16 +155,39 @@ export function WeeklySummaryGenerator({
 
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="text-xs text-muted">
-              Generated from your logs · {data.range.label}
+              Generated from your entries · {data.range.label}
             </p>
             <CopyButton text={outputs[tab]} className="h-8" />
           </div>
 
-          <pre className="scroll-thin max-h-[460px] overflow-auto whitespace-pre-wrap rounded-xl border border-border bg-surface-2/60 p-4 font-sans text-sm leading-relaxed text-fg">
+          <pre className="scroll-thin max-h-[480px] overflow-auto whitespace-pre-wrap rounded-lg border border-border bg-surface-2/50 p-4 font-sans text-sm leading-relaxed text-fg">
             {outputs[tab]}
           </pre>
         </div>
       )}
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="px-1 first:pl-0 sm:px-4">
+      <p
+        className={`text-xl font-semibold tracking-tight ${
+          accent ? "text-accent" : ""
+        }`}
+      >
+        {value}
+      </p>
+      <p className="text-xs text-muted">{label}</p>
     </div>
   );
 }

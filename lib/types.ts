@@ -14,10 +14,31 @@ export interface BaseRecord {
 
 export type ConfidenceLevel = "blocked" | "struggling" | "steady" | "confident";
 
+export type SessionType =
+  | "lab"
+  | "remote"
+  | "meeting"
+  | "coding"
+  | "manual_coding"
+  | "other";
+
+// A single timed stretch of work within a day. A day can hold several.
+export interface WorkSession {
+  id: ID;
+  timeIn: string; // "HH:MM" 24h, or "" if not set
+  timeOut: string; // "HH:MM" 24h, or ""
+  breakMinutes: number;
+  sessionType: SessionType;
+  overnight: boolean; // explicit: timeOut is on the next day
+  notes: string;
+  calculatedHours: number; // cached result of calculateSessionHours
+}
+
 export interface DailyLog extends BaseRecord {
   date: ISODate;
-  hours: number; // hours spent on tasks (focused work)
-  labHours: number; // total hours physically in lab
+  sessions: WorkSession[];
+  hoursOnTask: number; // focused task hours (manual or summed)
+  manualLabHoursOverride: number | null; // overrides the session-summed lab hours
   focus: string;
   tags: string[];
   workedFor: string[]; // optional: lab members this work was for
@@ -30,6 +51,10 @@ export interface DailyLog extends BaseRecord {
   questions: string;
   nextSteps: string;
   confidence: ConfidenceLevel;
+
+  // --- legacy (pre-sessions) fields, kept optional for migration only ---
+  hours?: number;
+  labHours?: number;
 }
 
 export type GoalStatus = "not_started" | "in_progress" | "blocked" | "done";

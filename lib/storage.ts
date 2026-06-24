@@ -71,16 +71,23 @@ export interface Repository<T extends BaseRecord> {
   remove(id: ID): Promise<void>;
 }
 
-export function createRepository<T extends BaseRecord>(key: string): Repository<T> {
+export function createRepository<T extends BaseRecord>(
+  key: string,
+  // Optional migrator applied to every record on read, so older stored shapes
+  // are upgraded transparently without a destructive rewrite.
+  normalize?: (raw: unknown) => T
+): Repository<T> {
+  const norm = normalize ?? ((r: unknown) => r as T);
   return {
     key,
     async list() {
-      return read<T>(key).sort((a, b) =>
-        b.createdAt.localeCompare(a.createdAt)
-      );
+      return read<unknown>(key)
+        .map(norm)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
     async get(id) {
-      return read<T>(key).find((r) => r.id === id);
+      const raw = read<unknown>(key).map(norm).find((r) => r.id === id);
+      return raw;
     },
     async create(data) {
       const record = {

@@ -6,6 +6,7 @@ import { GoalCard } from "@/components/GoalCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Modal } from "@/components/Modal";
 import { Field, Select, TextArea, TextInput } from "@/components/Field";
+import { Skeleton } from "@/components/Skeleton";
 import { GOAL_STATUS_OPTIONS, PRIORITY_OPTIONS } from "@/lib/constants";
 import { goalRepo } from "@/lib/repositories";
 import { useCollection } from "@/lib/useCollection";
@@ -67,7 +68,10 @@ export default function GoalsPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-32 w-full rounded-xl" />
+          <Skeleton className="h-32 w-full rounded-xl" />
+        </div>
       ) : items.length === 0 ? (
         <EmptyState
           title="No goals yet"

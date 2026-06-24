@@ -21,8 +21,8 @@ export default function WeeklyPage() {
   return (
     <div>
       <PageHeader
-        title="Weekly Summary"
-        subtitle="Turn your daily logs into a clean update for Cameron and lab meeting — no filler, just your data."
+        title="Prepare Cameron update"
+        subtitle="A meeting-prep document built from your notebook entries — accomplishments, time, blockers, and decisions needed. No filler."
       />
       <WeeklySummaryGenerator
         logs={logs}

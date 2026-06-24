@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { TaskCard } from "@/components/TaskCard";
 import { Modal } from "@/components/Modal";
 import { EmptyState } from "@/components/EmptyState";
+import { Skeleton } from "@/components/Skeleton";
 import { Field, Select, TextArea, TextInput } from "@/components/Field";
 import { PRIORITY_OPTIONS, TASK_COLUMNS } from "@/lib/constants";
 import { goalRepo, taskRepo } from "@/lib/repositories";
@@ -105,11 +106,22 @@ export default function TasksPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {TASK_COLUMNS.map((col) => (
+            <div
+              key={col.value}
+              className="rounded-xl border border-border bg-surface-2/50 p-2.5"
+            >
+              <Skeleton className="mb-2 h-3 w-16" />
+              <Skeleton className="mb-2 h-16 w-full rounded-lg" />
+              <Skeleton className="h-16 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
       ) : tasks.length === 0 ? (
         <EmptyState
           title="No tasks yet"
-          description="Break your work into tasks and move them across Backlog → This Week → Today → Done."
+          description="No tasks yet — add one for this week's lab work and move it across Backlog → This Week → Today → Done."
         />
       ) : (
         <div className="no-scrollbar -mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">

@@ -5,9 +5,19 @@ import type {
   FileStatus,
   GoalStatus,
   Priority,
+  SessionType,
   TaskStatus,
   Urgency,
 } from "./types";
+
+export const SESSION_TYPE_OPTIONS: { value: SessionType; label: string }[] = [
+  { value: "lab", label: "In lab" },
+  { value: "manual_coding", label: "Manual gaze coding" },
+  { value: "coding", label: "Coding / analysis" },
+  { value: "remote", label: "Remote work" },
+  { value: "meeting", label: "Meeting" },
+  { value: "other", label: "Other" },
+];
 
 // Lab members — used by the optional "Worked for" field on a daily log.
 export const LAB_MEMBERS = [

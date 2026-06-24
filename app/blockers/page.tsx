@@ -6,6 +6,7 @@ import { BlockerCard } from "@/components/BlockerCard";
 import { EmptyState } from "@/components/EmptyState";
 import { Modal } from "@/components/Modal";
 import { Field, Select, TextArea, TextInput } from "@/components/Field";
+import { Skeleton } from "@/components/Skeleton";
 import { BLOCKER_STATUS_OPTIONS, URGENCY_OPTIONS } from "@/lib/constants";
 import { blockerRepo, taskRepo } from "@/lib/repositories";
 import { useCollection } from "@/lib/useCollection";
@@ -73,7 +74,10 @@ export default function BlockersPage() {
       />
 
       {loading ? (
-        <p className="text-sm text-muted">Loading…</p>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Skeleton className="h-28 w-full rounded-xl" />
+          <Skeleton className="h-28 w-full rounded-xl" />
+        </div>
       ) : items.length === 0 ? (
         <EmptyState
           title="Nothing blocking you"
